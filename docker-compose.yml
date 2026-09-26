@@ -1,0 +1,61 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: shop-mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: shop
+      MYSQL_USER: shop_user
+      MYSQL_PASSWORD: 108980
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+
+  backend:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+
+    container_name: shop-backend
+    restart: unless-stopped
+
+    env_file:
+      - ./app/.env
+
+    environment:
+      DATABASE_URL: mysql+pymysql://shop_user:108980@mysql:3306/shop
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./shop-fe
+      dockerfile: Dockerfile
+
+    container_name: shop-frontend
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "80:80"
+
+
+volumes:
+  mysql_data:
